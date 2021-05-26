@@ -19,7 +19,7 @@ alias ...='cd ../..'
 
 # misc aliases
 alias ls="ls --color"
-alias vim="vim -C $GETAROUND_ROOT/vimrc"
+alias vim="vim -u $GETAROUND_ROOT/vimrc"
 alias ta='tmux attach || tmux new'
 
 # none, visible or audible
