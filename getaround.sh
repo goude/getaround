@@ -10,6 +10,7 @@ alias df='df -h'
 
 # git aliases
 alias gs='git status'
+alias ga='git add'
 alias gca='git commit -a'
 alias gp='git push'
 
