@@ -14,5 +14,6 @@ Vim configuration is kept to a bare minimum - the ulterior motive of
 ```sh
 $ git clone https://github.com/goude/getaround  # do _not_ start hearing the Beach Boys
 $ source getaround/getaround.sh
+$ ln -s getaround/vimrc ~/.vimrc
 $ getaround
 ```
