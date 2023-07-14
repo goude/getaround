@@ -26,6 +26,8 @@ alias ta='tmux attach || tmux new'
 # none, visible or audible
 set bell-style none
 
+alias sau="sudo apt update && sudo apt upgrade -y"
+
 # disable/enable 8bit input
 #set meta-flag on
 #set input-meta on
