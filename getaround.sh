@@ -53,9 +53,8 @@ function getaround {
 # git quicksave: commit and push
 save() {
   if [ -z "${1+x}" ]; then
-    echo "Missing commit message.";
+    echo "Missing commit message."
   else
     git commit -a -m "$1" && git push
   fi
 }
-
