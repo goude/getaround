@@ -44,10 +44,6 @@ bind -m vi-insert '"\C-l": clear-screen'
 # Fzf fuzzy search (Ctrl-R enhanced history)
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
-# Fish-style history suggestions
-[ -f ~/.bash-autosuggestions/bash-autosuggestions.sh ] &&
-  source ~/.bash-autosuggestions/bash-autosuggestions.sh
-
 ###--- FUNCTIONS ---###
 
 # Welcome/help function
