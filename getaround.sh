@@ -1,5 +1,6 @@
-# Getaround shell setup
-GETAROUND_ROOT="$HOME/getaround"
+# Environment
+export GETAROUND_ROOT="$HOME/getaround"
+export EDITOR=nvim
 
 ###--- PROTECTIVE ALIASES ---###
 alias rm='rm -i'
@@ -12,6 +13,7 @@ alias ls='ls --color'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ta='tmux attach || tmux new'
+alias n='nvim'
 
 ###--- GIT ALIASES ---###
 alias gs='git status'
@@ -23,8 +25,8 @@ alias gp='git push'
 alias sau='sudo apt update && sudo apt upgrade -y'
 
 ###--- SHELL BEHAVIOR ---###
-set -o vi                   # vi keybindings
-set bell-style none         # no bell sound
+set -o vi           # vi keybindings
+set bell-style none # no bell sound
 
 # Show vi mode in prompt
 bind 'set show-mode-in-prompt on'
@@ -43,7 +45,7 @@ bind -m vi-insert '"\C-l": clear-screen'
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
 # Fish-style history suggestions
-[ -f ~/.bash-autosuggestions/bash-autosuggestions.sh ] && \
+[ -f ~/.bash-autosuggestions/bash-autosuggestions.sh ] &&
   source ~/.bash-autosuggestions/bash-autosuggestions.sh
 
 ###--- FUNCTIONS ---###
@@ -62,4 +64,21 @@ save() {
   fi
 }
 
-# --- END OF FILE ---
+rcg() {
+  echo "Setting up default global git configuration for Daniel Goude."
+
+  git config --global user.name 'Daniel Goude'
+  git config --global user.email 'daniel@goude.se'
+  git config --global push.default simple
+  git config --global pull.rebase false
+  git config --global core.editor vim
+  git config --global init.defaultBranch main
+
+  git config --global diff.tool vimdiff
+  git config --global merge.tool vimdiff
+
+  git config --global core.excludesfile ~/.gitignore
+  [[ -f ~/.gitignore ]] || touch ~/.gitignore
+
+  git config --list
+}
