@@ -1,5 +1,5 @@
 # Environment
-export GETAROUND_ROOT="$HOME/getaround"
+export GETAROUND_ROOT="$HOME/repos/getaround"
 export EDITOR=nvim
 
 ###--- PROTECTIVE ALIASES ---###
