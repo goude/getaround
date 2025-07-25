@@ -39,6 +39,25 @@ bind '"\C-f": menu-complete'
 # Clear screen in vi-insert mode with Ctrl-L
 bind -m vi-insert '"\C-l": clear-screen'
 
+# Disable terminal software flow control (XON/XOFF) with stty -ixon
+# ---------------------------------------------------------------
+# By default, Ctrl+S and Ctrl+Q are used by the terminal to pause/resume output:
+#   - Ctrl+S sends XOFF (pause transmission)
+#   - Ctrl+Q sends XON (resume transmission)
+#
+# This behavior is a relic of older serial terminal communication,
+# but still enabled by many terminal emulators today.
+#
+# The problem: Ctrl+S doesn't reach applications like Vim/Neovim because
+# the terminal intercepts it first and pauses output instead.
+#
+# Solution: 'stty -ixon' disables this flow control feature at the terminal level,
+# allowing Ctrl+S to be passed through to applications like Neovim,
+# where you can then map it to :w (save), etc.
+#
+# Safe to use in modern setups — keyboard flow control is rarely needed anymore.
+stty -ixon
+
 ###--- ENHANCED HISTORY / SUGGESTIONS ---###
 
 # Fzf fuzzy search (Ctrl-R enhanced history)
