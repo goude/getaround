@@ -1,6 +1,45 @@
+# getaround.sh
+
+# helpers
+_ga_warn() { printf '%s\n' "$*" >&2; }
+
+# resolve absolute path of this script
+_ga_script_path() {
+  local src dir base
+  if [ -n "$BASH_SOURCE" ]; then
+    src="${BASH_SOURCE[0]}"
+  elif [ -n "$ZSH_VERSION" ]; then
+    src="${(%):-%x}"
+  else
+    src="$0"
+  fi
+
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$src"
+  else
+    dir="$(cd "$(dirname "$src")" >/dev/null 2>&1 && pwd -P)"
+    base="$(basename "$src")"
+    printf '%s/%s\n' "$dir" "$base"
+  fi
+}
+
 # env
-export GETAROUND_ROOT="$HOME/repos/getaround"
 export EDITOR=nvim
+GETAROUND_VERSION="1.0.1"
+
+# set GETAROUND_ROOT dynamically (to script's directory)
+if [ -z "$GETAROUND_ROOT" ]; then
+  script_path="$(_ga_script_path)"
+  export GETAROUND_ROOT="$(cd "$(dirname "$script_path")" && pwd -P)"
+fi
+
+# optional bin on PATH
+if [ -d "$GETAROUND_ROOT/bin" ]; then
+  case ":$PATH:" in
+    *":$GETAROUND_ROOT/bin:"*) : ;;
+    *) PATH="$GETAROUND_ROOT/bin:$PATH" ;;
+  esac
+fi
 
 # protective aliases
 alias rm='rm -i'
@@ -31,21 +70,15 @@ alias sau='sudo apt update && sudo apt upgrade -y'
 # terminal flow control
 stty -ixon 2>/dev/null || true
 
-# helpers
-_warn() { printf '%s\n' "$*" >&2; }
-
 # pbcopy/pbpaste cross-platform
 if ! command -v pbcopy >/dev/null 2>&1; then
   case "$OSTYPE" in
-    darwin*)
-      # native on macOS; nothing to do
-      :
-      ;;
+    darwin*) : ;;
     linux*)
-      if grep -qi microsoft /proc/version 2>/dev/null; then
-        # WSL
-        pbcopy() { clip.exe; }
-        pbpaste() { powershell.exe -NoLogo -NoProfile -Command Get-Clipboard; }
+      if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null || \
+         grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null; then
+        pbcopy()  { clip.exe; }
+        pbpaste() { powershell.exe -NoLogo -NoProfile -Command Get-Clipboard | tr -d '\r'; }
       elif command -v xclip >/dev/null 2>&1; then
         pbcopy()  { xclip -selection clipboard; }
         pbpaste() { xclip -selection clipboard -o; }
@@ -53,23 +86,22 @@ if ! command -v pbcopy >/dev/null 2>&1; then
         pbcopy()  { xsel --clipboard --input; }
         pbpaste() { xsel --clipboard --output; }
       else
-        pbcopy()  { _warn "pbcopy unavailable: install xclip or xsel (Linux)"; return 127; }
-        pbpaste() { _warn "pbpaste unavailable: install xclip or xsel (Linux)"; return 127; }
+        pbcopy()  { _ga_warn "pbcopy unavailable: install xclip or xsel (Linux)"; return 127; }
+        pbpaste() { _ga_warn "pbpaste unavailable: install xclip or xsel (Linux)"; return 127; }
       fi
       ;;
     *)
-      pbcopy()  { _warn "pbcopy unsupported on this platform"; return 127; }
-      pbpaste() { _warn "pbpaste unsupported on this platform"; return 127; }
+      pbcopy()  { _ga_warn "pbcopy unsupported on this platform"; return 127; }
+      pbpaste() { _ga_warn "pbpaste unsupported on this platform"; return 127; }
       ;;
   esac
 fi
 
 # functions
-getaround() {
-  echo "Welcome to getaround."
-}
+ga-welcome() { printf 'Welcome to getaround (%s).\n' "$GETAROUND_VERSION"; }
+getaround()  { ga-welcome; }
 
-save() {
+ga-save() {
   if [ -z "$1" ]; then
     echo "Missing commit message."
   else
@@ -77,23 +109,72 @@ save() {
   fi
 }
 
-rcg() {
+ga-rcg() {
+  if ! command -v git >/dev/null 2>&1; then
+    _ga_warn "git not found; cannot configure."
+    return 127
+  fi
   echo "Setting up default global git configuration for Daniel Goude."
-
   git config --global user.name 'Daniel Goude'
   git config --global user.email 'daniel@goude.se'
   git config --global push.default simple
   git config --global pull.rebase false
-  git config --global core.editor vim
+  git config --global core.editor nvim
   git config --global init.defaultBranch main
-
   git config --global diff.tool vimdiff
   git config --global merge.tool vimdiff
-
   git config --global core.excludesfile ~/.gitignore
   [ -f ~/.gitignore ] || touch ~/.gitignore
-
   git config --list
+}
+
+# fzf init portability
+_ga_init_fzf() {
+  if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.fzf.bash" ]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.fzf.bash"
+  elif [ -n "$ZSH_VERSION" ] && [ -f "$HOME/.fzf.zsh" ]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.fzf.zsh"
+  elif [ -n "$ZSH_VERSION" ] && command -v fzf-share >/dev/null 2>&1; then
+    # shellcheck disable=SC1090
+    source "$(fzf-share)/key-bindings.zsh"
+    # shellcheck disable=SC1090
+    source "$(fzf-share)/completion.zsh"
+  elif [ -d /usr/share/doc/fzf/examples ]; then
+    if [ -n "$BASH_VERSION" ] && [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+      # shellcheck disable=SC1091
+      source /usr/share/doc/fzf/examples/key-bindings.bash
+      # shellcheck disable=SC1091
+      source /usr/share/doc/fzf/examples/completion.bash
+    elif [ -n "$ZSH_VERSION" ] && [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
+      # shellcheck disable=SC1091
+      source /usr/share/doc/fzf/examples/key-bindings.zsh
+      # shellcheck disable=SC1091
+      source /usr/share/doc/fzf/examples/completion.zsh
+    fi
+  fi
+}
+
+# help
+ga-help() {
+  cat <<'EOF'
+getaround.sh installed.
+
+Aliases:
+  rm/mv/cp (interactive), ls (color), df, .., ..., ta, n
+  gs, ga, gca, gp, sau
+Functions:
+  getaround           - prints welcome with version
+  ga-save "msg"       - git commit -a -m "msg" && git push
+  ga-rcg              - set Git globals for Daniel (uses nvim)
+  install-getaround   - add/update source block in ~/.zshrc or ~/.bashrc
+Clipboard:
+  pbcopy/pbpaste      - macOS native; Linux via xclip/xsel; WSL via Windows clipboard
+Notes:
+  GETAROUND_ROOT set dynamically to this script’s directory.
+  GETAROUND_ROOT/bin is prepended to PATH if it exists.
+EOF
 }
 
 # bash-specific
@@ -105,7 +186,7 @@ if [ -n "$BASH_VERSION" ]; then
   bind 'set vi-cmd-mode-string "\1\e[31m\2[NORMAL]\1\e[0m\2 "'
   bind '"\C-f": menu-complete'
   bind -m vi-insert '"\C-l": clear-screen'
-  [ -f ~/.fzf.bash ] && source ~/.fzf.bash
+  _ga_init_fzf
 fi
 
 # zsh-specific
@@ -123,7 +204,6 @@ if [ -n "$ZSH_VERSION" ]; then
     zle reset-prompt
   }
   zle -N zle-keymap-select
-
   zle-line-init() { zle-keymap-select; }
   zle -N zle-line-init
 
@@ -135,13 +215,26 @@ if [ -n "$ZSH_VERSION" ]; then
   zmodload zsh/complist 2>/dev/null || true
   zstyle ':completion:*' menu select
 
-  [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+  _ga_init_fzf
 fi
 
-# install helper
+# fallback for other shells
+if [ -z "$BASH_VERSION$ZSH_VERSION" ]; then
+  _ga_warn "getaround.sh: non-bash/zsh shell detected; skipped shell-specific keybindings."
+fi
+
+# auto-run welcome when sourced (interactive only)
+case $- in
+  *i*) getaround ;;
+esac
+
+# ------------------------------------------------------------------------------
+# install helper (idempotent rewrite of block) — kept last
 install-getaround() {
-  # choose target rc file
-  local target_rc
+  local target_rc block_start block_end src_path tmp
+  block_start="# >>> getaround init >>>"
+  block_end="# <<< getaround init <<<"
+
   if [ -n "$1" ]; then
     target_rc="$1"
   elif [ -n "$ZSH_VERSION" ]; then
@@ -150,42 +243,28 @@ install-getaround() {
     target_rc="$HOME/.bashrc"
   fi
 
-  # resolve absolute path to this script (bash, zsh, or sh)
-  local src_path dir base
-  if [ -n "$BASH_SOURCE" ]; then
-    src_path="${BASH_SOURCE[0]}"
-  elif [ -n "$ZSH_VERSION" ]; then
-    # zsh: current script path
-    src_path="${(%):-%x}"
-  else
-    src_path="$0"
-  fi
-
-  # try realpath, else portable resolution
-  if command -v realpath >/dev/null 2>&1; then
-    src_path="$(realpath "$src_path")"
-  else
-    dir="$(cd "$(dirname "$src_path")" >/dev/null 2>&1 && pwd -P)"
-    base="$(basename "$src_path")"
-    src_path="$dir/$base"
-  fi
-
+  src_path="$(_ga_script_path)"
   [ -f "$target_rc" ] || touch "$target_rc"
+  tmp="$(mktemp "${TMPDIR:-/tmp}/getaround.XXXXXX")" || { _ga_warn "mktemp failed"; return 1; }
 
-  # idempotent insertion
-  if grep -Fq '>>> getaround init >>>' "$target_rc"; then
-    echo "Already installed in $target_rc"
+  if grep -Fq "$block_start" "$target_rc"; then
+    awk -v start="$block_start" -v end="$block_end" -v path="$src_path" '
+      BEGIN { inblk=0 }
+      $0 ~ start { print start; print "source \"" path "\""; print end; inblk=1; next }
+      $0 ~ end && inblk==1 { inblk=0; next }
+      inblk==0 { print }
+    ' "$target_rc" > "$tmp"
+    mv "$tmp" "$target_rc"
+    echo "Updated: source block in $target_rc"
   else
     {
-      echo ''
-      echo '# >>> getaround init >>>'
+      echo ""
+      echo "$block_start"
       echo "source \"$src_path\""
-      echo '# <<< getaround init <<<'
+      echo "$block_end"
     } >> "$target_rc"
-    echo "Installed: added source line to $target_rc"
+    echo "Installed: added source block to $target_rc"
   fi
 
-  # shell hint
-  echo "Open a new shell or run: source \"$target_rc\""
+  echo "Reload with: source \"$target_rc\""
 }
-
