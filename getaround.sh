@@ -24,8 +24,16 @@ _ga_script_path() {
 }
 
 # env
-export EDITOR=nvim
-GETAROUND_VERSION="1.0.1"
+GETAROUND_VERSION="1.0.2"
+
+# set EDITOR dynamically: nvim > vim > vi > nano (fallback vi)
+for candidate in nvim vim vi nano; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    export EDITOR="$candidate"
+    break
+  fi
+done
+: "${EDITOR:=vi}"
 
 # set GETAROUND_ROOT dynamically (to script's directory)
 if [ -z "$GETAROUND_ROOT" ]; then
@@ -73,8 +81,9 @@ stty -ixon 2>/dev/null || true
 # pbcopy/pbpaste cross-platform
 if ! command -v pbcopy >/dev/null 2>&1; then
   case "$OSTYPE" in
-    darwin*) : ;;
+    darwin*) : ;; # native on macOS
     linux*)
+      # detect WSL
       if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null || \
          grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null; then
         pbcopy()  { clip.exe; }
@@ -98,7 +107,7 @@ if ! command -v pbcopy >/dev/null 2>&1; then
 fi
 
 # functions
-ga-welcome() { printf 'Welcome to getaround (%s).\n' "$GETAROUND_VERSION"; }
+ga-welcome() { printf 'Welcome to getaround (%s). EDITOR=%s\n' "$GETAROUND_VERSION" "$EDITOR"; }
 getaround()  { ga-welcome; }
 
 ga-save() {
@@ -115,16 +124,20 @@ ga-rcg() {
     return 127
   fi
   echo "Setting up default global git configuration for Daniel Goude."
+
   git config --global user.name 'Daniel Goude'
   git config --global user.email 'daniel@goude.se'
   git config --global push.default simple
   git config --global pull.rebase false
-  git config --global core.editor nvim
+  git config --global core.editor "${EDITOR:-vi}"
   git config --global init.defaultBranch main
+
   git config --global diff.tool vimdiff
   git config --global merge.tool vimdiff
+
   git config --global core.excludesfile ~/.gitignore
   [ -f ~/.gitignore ] || touch ~/.gitignore
+
   git config --list
 }
 
@@ -165,15 +178,16 @@ Aliases:
   rm/mv/cp (interactive), ls (color), df, .., ..., ta, n
   gs, ga, gca, gp, sau
 Functions:
-  getaround           - prints welcome with version
+  getaround           - prints welcome with version and current $EDITOR
   ga-save "msg"       - git commit -a -m "msg" && git push
-  ga-rcg              - set Git globals for Daniel (uses nvim)
+  ga-rcg              - set Git globals (core.editor mirrors $EDITOR)
   install-getaround   - add/update source block in ~/.zshrc or ~/.bashrc
 Clipboard:
   pbcopy/pbpaste      - macOS native; Linux via xclip/xsel; WSL via Windows clipboard
 Notes:
   GETAROUND_ROOT set dynamically to this script’s directory.
   GETAROUND_ROOT/bin is prepended to PATH if it exists.
+  EDITOR preference: nvim > vim > vi > nano.
 EOF
 }
 
